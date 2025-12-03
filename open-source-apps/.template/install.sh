@@ -96,7 +96,7 @@ log_step() {
 
 confirm_proceed() {
     echo -e "${ORANGE}Do you want to proceed? [y/N]${NC}"
-    read -r response
+    read -r response < /dev/tty
     if [[ ! "$response" =~ ^[Yy]$ ]]; then
         log_info "Operation cancelled."
         exit 0
@@ -223,7 +223,7 @@ install_docker_macos() {
         echo "  brew install --cask docker"
         echo ""
         echo -e "${ORANGE}Do you want to install Docker Desktop via Homebrew? [y/N]${NC}"
-        read -r response
+        read -r response < /dev/tty
         if [[ "$response" =~ ^[Yy]$ ]]; then
             brew install --cask docker
             echo ""

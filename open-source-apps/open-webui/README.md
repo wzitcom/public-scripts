@@ -20,13 +20,13 @@ Open WebUI is a self-hosted, feature-rich web interface for running and managing
 ## Quick Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/wz-it/public-scripts/main/open-source-apps/open-webui/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/wzitcom/public-scripts/refs/heads/main/open-source-apps/open-webui/install.sh | bash
 ```
 
 Or download and review before running:
 
 ```bash
-curl -O https://raw.githubusercontent.com/wz-it/public-scripts/main/open-source-apps/open-webui/install.sh
+curl -O https://raw.githubusercontent.com/wzitcom/public-scripts/refs/heads/main/open-source-apps/open-webui/install.sh
 chmod +x install.sh
 ./install.sh
 ```

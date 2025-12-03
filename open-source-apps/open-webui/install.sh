@@ -105,7 +105,7 @@ log_step() {
 
 confirm_proceed() {
     echo -e "${ORANGE}Do you want to proceed? [y/N]${NC}"
-    read -r response
+    read -r response < /dev/tty
     if [[ ! "$response" =~ ^[Yy]$ ]]; then
         log_info "Operation cancelled."
         exit 0
@@ -232,7 +232,7 @@ install_docker_macos() {
         echo "  brew install --cask docker"
         echo ""
         echo -e "${ORANGE}Do you want to install Docker Desktop via Homebrew? [y/N]${NC}"
-        read -r response
+        read -r response < /dev/tty
         if [[ "$response" =~ ^[Yy]$ ]]; then
             brew install --cask docker
             echo ""
@@ -365,7 +365,7 @@ check_ports() {
         log_warn "Port 80 and/or 443 may be in use."
         log_warn "Caddy requires these ports for HTTPS."
         echo -e "${ORANGE}Do you want to continue anyway? [y/N]${NC}"
-        read -r response
+        read -r response < /dev/tty
         if [[ ! "$response" =~ ^[Yy]$ ]]; then
             exit 1
         fi
@@ -383,7 +383,7 @@ configure_installation() {
 
     # Installation directory
     echo -e "Installation directory [${BOLD}${INSTALL_DIR}${NC}]: "
-    read -r custom_dir
+    read -r custom_dir < /dev/tty
     if [[ -n "$custom_dir" ]]; then
         INSTALL_DIR="$custom_dir"
     fi
@@ -394,7 +394,7 @@ configure_installation() {
     echo "Leave empty for localhost-only access on port 3000."
     echo ""
     echo -e "Domain (e.g., openwebui.example.com): "
-    read -r DOMAIN
+    read -r DOMAIN < /dev/tty
 
     if [[ -n "$DOMAIN" ]]; then
         USE_CADDY="true"
@@ -411,14 +411,14 @@ configure_installation() {
     echo ""
     if command -v nvidia-smi &> /dev/null; then
         echo -e "NVIDIA GPU detected. Enable GPU support? [Y/n]"
-        read -r gpu_response
+        read -r gpu_response < /dev/tty
         if [[ ! "$gpu_response" =~ ^[Nn]$ ]]; then
             USE_GPU="true"
             log_info "GPU support enabled"
         fi
     else
         echo -e "Enable NVIDIA GPU support? (requires nvidia-docker) [y/N]"
-        read -r gpu_response
+        read -r gpu_response < /dev/tty
         if [[ "$gpu_response" =~ ^[Yy]$ ]]; then
             USE_GPU="true"
             log_info "GPU support enabled"
@@ -429,7 +429,7 @@ configure_installation() {
     echo ""
     echo "Use slim image? (Smaller download, models downloaded on first use)"
     echo -e "[y/N]: "
-    read -r slim_response
+    read -r slim_response < /dev/tty
     if [[ "$slim_response" =~ ^[Yy]$ ]]; then
         USE_SLIM="true"
         log_info "Slim image selected"

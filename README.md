@@ -11,13 +11,13 @@ This repository contains ready-to-use installation scripts for popular open-sour
 Each application can be installed with a single command:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/wz-it/public-scripts/main/open-source-apps/<app-name>/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/wzitcom/public-scripts/refs/heads/main/open-source-apps/<app-name>/install.sh | bash
 ```
 
 Or download and review before running:
 
 ```bash
-curl -O https://raw.githubusercontent.com/wz-it/public-scripts/main/open-source-apps/<app-name>/install.sh
+curl -O https://raw.githubusercontent.com/wzitcom/public-scripts/refs/heads/main/open-source-apps/<app-name>/install.sh
 chmod +x install.sh
 ./install.sh
 ```
@@ -105,4 +105,4 @@ See [LICENSE](LICENSE) for details.
 ## Contact
 
 - Website: [https://wz-it.com](https://wz-it.com)
-- GitHub: [https://github.com/wz-it](https://github.com/wz-it)
+- GitHub: [https://github.com/wzitcom](https://github.com/wzitcom)

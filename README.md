@@ -27,6 +27,7 @@ chmod +x install.sh
 | Application | Description | Install Command |
 |-------------|-------------|-----------------|
 | [Open WebUI](open-source-apps/open-webui/) | Self-hosted LLM web interface with optional Caddy HTTPS | `curl -fsSL .../open-webui/install.sh \| bash` |
+| [Paperless-AI](open-source-apps/paperless-ai/) | AI-powered document tagging for Paperless-ngx | `curl -fsSL .../paperless-ai/install.sh \| bash` |
 
 ## Repository Structure
 
@@ -41,6 +42,9 @@ public-scripts/
 │   ├── open-webui/          # Open WebUI installer
 │   │   ├── install.sh
 │   │   └── README.md
+│   ├── paperless-ai/        # Paperless-AI installer
+│   │   ├── install.sh
+│   │   └── README.md
 │   └── <app-name>/          # Each app gets its own folder
 │       ├── install.sh       # Main installer script
 │       └── README.md        # App-specific documentation
@@ -53,6 +57,12 @@ public-scripts/
 - **sudo** access - For installing Docker if not present
 
 **Note:** Docker and Docker Compose are automatically installed by the scripts if not already present.
+
+## Important Notice
+
+**These scripts are designed to be run on FRESH SERVERS.**
+
+Running on existing servers with other services may cause port conflicts or other issues.
 
 ## Disclaimer
 

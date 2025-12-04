@@ -12,6 +12,11 @@
 #   Licensed under MIT License
 #
 #===============================================================================
+#
+#   IMPORTANT: This script is designed to be run on a FRESH SERVER.
+#   Running on an existing server may cause conflicts with existing services.
+#
+#===============================================================================
 
 set -e
 
@@ -65,6 +70,8 @@ print_disclaimer() {
     echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${YELLOW}DISCLAIMER${NC}"
     echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "${RED}IMPORTANT: This script is designed for FRESH SERVERS only!${NC}"
     echo ""
     echo "This script is intended for quickly deploying DEVELOPMENT and TESTING"
     echo "environments only."

@@ -1,9 +1,13 @@
-# Open WebUI Installer
+# Paperless-AI Installer
 
-Quick installer for [Open WebUI](https://openwebui.com/) with optional Caddy reverse proxy for automatic HTTPS.
+Quick installer for [Paperless-AI](https://github.com/clusterzx/paperless-ai) with optional Caddy reverse proxy for automatic HTTPS.
 
 **Version:** 1.0.0
 **Copyright:** (c) 2025 WZ-IT - [wz-it.com](https://wz-it.com)
+
+## What is Paperless-AI?
+
+Paperless-AI is an AI-powered companion for [Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx) that automatically analyzes and tags your documents using AI (OpenAI, Ollama, and more).
 
 ## Important Notice
 
@@ -11,28 +15,22 @@ Quick installer for [Open WebUI](https://openwebui.com/) with optional Caddy rev
 
 Running on an existing server with other services may cause port conflicts or other issues.
 
-## What is Open WebUI?
+## Prerequisites
 
-Open WebUI is a self-hosted, feature-rich web interface for running and managing Large Language Models (LLMs). It supports:
-
-- Multiple LLM backends (Ollama, OpenAI, and more)
-- User management and authentication
-- Chat history and conversations
-- Model management
-- RAG (Retrieval-Augmented Generation)
-- Function calling and tools
-- And much more...
+- **Paperless-ngx** - You need a working Paperless-ngx installation
+- **Docker** - Automatically installed by this script if missing
+- **Fresh server** - Recommended for clean installation
 
 ## Quick Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/wzitcom/public-scripts/refs/heads/main/open-source-apps/open-webui/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/wzitcom/public-scripts/refs/heads/main/open-source-apps/paperless-ai/install.sh | bash
 ```
 
 Or download and review before running:
 
 ```bash
-curl -O https://raw.githubusercontent.com/wzitcom/public-scripts/refs/heads/main/open-source-apps/open-webui/install.sh
+curl -O https://raw.githubusercontent.com/wzitcom/public-scripts/refs/heads/main/open-source-apps/paperless-ai/install.sh
 chmod +x install.sh
 ./install.sh
 ```
@@ -43,8 +41,6 @@ chmod +x install.sh
 2. Prompts for configuration options:
    - Installation directory
    - Domain name (optional, for HTTPS with Caddy)
-   - GPU support (optional)
-   - Slim/full image selection
 3. Creates `docker-compose.yml` with your configuration
 4. If domain specified: Creates `Caddyfile` for automatic HTTPS
 5. Creates `.env` file for environment variables
@@ -54,11 +50,11 @@ chmod +x install.sh
 
 ### Local Development (Default)
 
-Without a domain, Open WebUI runs on `http://localhost:3000`:
+Without a domain, Paperless-AI runs on `http://localhost:3000`:
 
 | Setting | Value |
 |---------|-------|
-| Install Directory | `~/open-webui` |
+| Install Directory | `~/paperless-ai` |
 | Web Port | `3000` |
 | HTTPS | No |
 
@@ -68,61 +64,32 @@ With a domain configured, Caddy provides automatic HTTPS:
 
 | Setting | Value |
 |---------|-------|
-| Install Directory | `~/open-webui` |
+| Install Directory | `~/paperless-ai` |
 | Ports | `80`, `443` |
 | HTTPS | Yes (automatic via Let's Encrypt) |
 
-## Requirements
-
-- Docker (automatically installed if missing)
-- For HTTPS: Domain with DNS pointing to your server
-- For GPU: NVIDIA GPU with nvidia-docker
-
 ## Post-Installation
 
-### First Login
+### Initial Setup
 
-1. Navigate to your Open WebUI instance
-2. Sign up for an account
-3. **The first user automatically becomes Administrator**
-4. Subsequent users will have "Pending" status until approved
-
-### Connecting to Ollama
-
-If you're running Ollama locally, edit `.env`:
-
-```bash
-cd ~/open-webui
-nano .env
-```
-
-Uncomment and configure:
-```env
-OLLAMA_BASE_URL=http://host.docker.internal:11434
-```
-
-Then restart:
-```bash
-docker compose down && docker compose up -d
-```
-
-### Connecting to OpenAI
-
-Edit `.env` and add your API key:
-
-```env
-OPENAI_API_KEY=sk-your-api-key-here
-```
+1. Open the web interface at `http://localhost:3000` or your configured domain
+2. Configure your Paperless-ngx connection:
+   - Paperless-ngx URL
+   - API Token
+3. Set up your AI provider:
+   - OpenAI API Key, or
+   - Ollama connection, or
+   - Other supported providers
 
 ## Useful Commands
 
 ```bash
 # Navigate to installation
-cd ~/open-webui
+cd ~/paperless-ai
 
 # View logs
 docker compose logs -f
-docker compose logs -f open-webui
+docker compose logs -f paperless-ai
 docker compose logs -f caddy  # If using Caddy
 
 # Stop services
@@ -160,19 +127,10 @@ When using a domain, Caddy is configured with:
 - **Security headers** (HSTS, X-Frame-Options, etc.)
 - **Access logging**
 
-### Custom Caddy Configuration
-
-Edit `Caddyfile` for customizations:
-
-```bash
-nano ~/open-webui/Caddyfile
-docker compose restart caddy
-```
-
 ## Uninstallation
 
 ```bash
-cd ~/open-webui
+cd ~/paperless-ai
 
 # Stop and remove containers, networks
 docker compose down
@@ -182,42 +140,33 @@ docker compose down -v
 
 # Remove installation directory
 cd ~
-rm -rf ~/open-webui
+rm -rf ~/paperless-ai
 ```
 
 ## Troubleshooting
 
 ### Port Already in Use
 
-If ports 80/443 are in use (when using Caddy):
+If port 3000 (or 80/443 when using Caddy) is in use:
+
 ```bash
 # Check what's using the ports
+sudo lsof -i :3000
 sudo lsof -i :80
 sudo lsof -i :443
 ```
 
-### Caddy Certificate Issues
+### Cannot Connect to Paperless-ngx
 
-```bash
-# Check Caddy logs
-docker compose logs caddy
-
-# Ensure DNS is properly configured
-nslookup your-domain.com
-```
-
-### GPU Not Working
-
-```bash
-# Check if nvidia-docker is working
-docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi
-```
+- Ensure Paperless-ngx is accessible from this server
+- Check firewall rules between servers
+- Verify the API token is correct
 
 ### Container Won't Start
 
 ```bash
 # Check container logs
-docker compose logs open-webui
+docker compose logs paperless-ai
 
 # Check container status
 docker ps -a
@@ -225,8 +174,8 @@ docker ps -a
 
 ## Resources
 
-- [Open WebUI Documentation](https://docs.openwebui.com/)
-- [Open WebUI GitHub](https://github.com/open-webui/open-webui)
+- [Paperless-AI GitHub](https://github.com/clusterzx/paperless-ai)
+- [Paperless-ngx Documentation](https://docs.paperless-ngx.com/)
 - [Caddy Documentation](https://caddyserver.com/docs/)
 - [WZ-IT Website](https://wz-it.com)
 

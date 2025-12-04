@@ -4,9 +4,9 @@
 #   WZ-IT Public Scripts
 #   https://wz-it.com
 #
-#   Application:    APP_NAME
+#   Application:    Paperless-AI
 #   Version:        1.0.0
-#   Description:    Quick installer for APP_NAME using Docker Compose
+#   Description:    Quick installer for Paperless-AI with optional Caddy reverse proxy
 #
 #   Copyright (c) 2025 WZ-IT
 #   Licensed under MIT License
@@ -23,10 +23,10 @@ set -e
 #-------------------------------------------------------------------------------
 # Configuration
 #-------------------------------------------------------------------------------
-APP_NAME="APP_NAME"
-APP_VERSION="latest"
+APP_NAME="Paperless-AI"
+APP_DIR_NAME="paperless-ai"
 SCRIPT_VERSION="1.0.0"
-INSTALL_DIR="${HOME}/${APP_NAME,,}"
+INSTALL_DIR="${HOME}/${APP_DIR_NAME}"
 
 # Colors (WZ-IT Brand)
 ORANGE='\033[38;2;231;83;1m'      # #E75301
@@ -37,6 +37,11 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
 CYAN='\033[0;36m'
+
+# Installation options (set during configuration)
+DOMAIN=""
+USE_CADDY="false"
+COMPOSE_CMD="docker compose"
 
 #-------------------------------------------------------------------------------
 # Helper Functions
@@ -53,7 +58,7 @@ print_banner() {
 
 EOF
     echo -e "${NC}"
-    echo -e "${BOLD}APP_NAME Installer${NC}"
+    echo -e "${BOLD}Paperless-AI Installer${NC}"
     echo -e "Version: ${SCRIPT_VERSION}"
     echo -e "https://wz-it.com"
     echo ""
@@ -77,6 +82,8 @@ print_disclaimer() {
     echo "  - High availability setup"
     echo "  - Resource monitoring and alerting"
     echo "  - Custom environment configurations"
+    echo ""
+    echo -e "${CYAN}Prerequisite: You need a working Paperless-ngx installation!${NC}"
     echo ""
     echo "WZ-IT provides this script 'as is' without warranty of any kind."
     echo "Use at your own risk."
@@ -333,8 +340,86 @@ preflight_checks() {
     fi
     log_info "Docker Compose found: $(${COMPOSE_CMD} version --short 2>/dev/null || echo 'available')"
 
+    # Check ports if using Caddy
+    if [[ "$USE_CADDY" == "true" ]]; then
+        check_ports
+    fi
+
     echo ""
     log_info "All pre-flight checks passed!"
+    echo ""
+}
+
+check_ports() {
+    local port_80_used=false
+    local port_443_used=false
+
+    if ss -tuln 2>/dev/null | grep -q ":80 " || netstat -tuln 2>/dev/null | grep -q ":80 "; then
+        port_80_used=true
+    fi
+    if ss -tuln 2>/dev/null | grep -q ":443 " || netstat -tuln 2>/dev/null | grep -q ":443 "; then
+        port_443_used=true
+    fi
+
+    if [[ "$port_80_used" == "true" ]] || [[ "$port_443_used" == "true" ]]; then
+        log_warn "Port 80 and/or 443 may be in use."
+        log_warn "Caddy requires these ports for HTTPS."
+        echo -e "${ORANGE}Do you want to continue anyway? [y/N]${NC}"
+        read -r response < /dev/tty
+        if [[ ! "$response" =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    fi
+}
+
+#-------------------------------------------------------------------------------
+# Configuration Wizard
+#-------------------------------------------------------------------------------
+configure_installation() {
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}Configuration${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    # Installation directory
+    echo -e "Installation directory [${BOLD}${INSTALL_DIR}${NC}]: "
+    read -r custom_dir < /dev/tty
+    if [[ -n "$custom_dir" ]]; then
+        INSTALL_DIR="$custom_dir"
+    fi
+
+    # Domain configuration
+    echo ""
+    echo "Do you want to configure a domain with automatic HTTPS (via Caddy)?"
+    echo "Leave empty for localhost-only access on port 3000."
+    echo ""
+    echo -e "Domain (e.g., paperless-ai.example.com): "
+    read -r DOMAIN < /dev/tty
+
+    if [[ -n "$DOMAIN" ]]; then
+        USE_CADDY="true"
+        echo ""
+        log_info "Domain set to: ${DOMAIN}"
+        log_info "Caddy will automatically obtain SSL certificates via Let's Encrypt."
+        log_warn "Make sure your DNS A record points to this server's IP!"
+    else
+        echo ""
+        log_info "No domain specified. Paperless-AI will be accessible at http://localhost:3000"
+    fi
+
+    # Print summary
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}Configuration Summary${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "  Install Directory: ${BOLD}${INSTALL_DIR}${NC}"
+    if [[ -n "$DOMAIN" ]]; then
+        echo -e "  Domain:            ${BOLD}${DOMAIN}${NC}"
+        echo -e "  Reverse Proxy:     ${BOLD}Caddy (automatic HTTPS)${NC}"
+    else
+        echo -e "  Access:            ${BOLD}http://localhost:3000${NC}"
+    fi
     echo ""
 }
 
@@ -350,72 +435,198 @@ create_install_directory() {
 create_docker_compose() {
     log_step "Creating docker-compose.yml..."
 
-    cat > docker-compose.yml << 'COMPOSE'
+    if [[ "$USE_CADDY" == "true" ]]; then
+        # With Caddy reverse proxy
+        cat > docker-compose.yml << EOF
 # ============================================================================
-# APP_NAME Docker Compose Stack
-# Generated by WZ-IT Installer
+# Paperless-AI Docker Compose Stack with Caddy
+# Generated by WZ-IT Installer v${SCRIPT_VERSION}
 # https://wz-it.com
 # ============================================================================
 
 services:
-  app:
-    image: APP_IMAGE:${APP_VERSION:-latest}
-    container_name: APP_NAME
+  paperless-ai:
+    image: clusterzx/paperless-ai:latest
+    container_name: paperless-ai
+    restart: unless-stopped
+    volumes:
+      - paperless-ai-data:/app/data
+    environment:
+      - TZ=\${TZ:-Europe/Berlin}
+    networks:
+      - paperless-ai-network
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: paperless-ai-caddy
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
     volumes:
-      - app_data:/data
-    environment:
-      - TZ=${TZ:-Europe/Berlin}
-    # Add your configuration here
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - paperless-ai-network
+    depends_on:
+      - paperless-ai
 
 volumes:
-  app_data:
+  paperless-ai-data:
+    driver: local
+  caddy-data:
+    driver: local
+  caddy-config:
+    driver: local
+
+networks:
+  paperless-ai-network:
+    name: paperless-ai-network
+EOF
+    else
+        # Without Caddy (localhost only)
+        cat > docker-compose.yml << EOF
+# ============================================================================
+# Paperless-AI Docker Compose Stack
+# Generated by WZ-IT Installer v${SCRIPT_VERSION}
+# https://wz-it.com
+# ============================================================================
+
+services:
+  paperless-ai:
+    image: clusterzx/paperless-ai:latest
+    container_name: paperless-ai
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - paperless-ai-data:/app/data
+    environment:
+      - TZ=\${TZ:-Europe/Berlin}
+
+volumes:
+  paperless-ai-data:
     driver: local
 
 networks:
   default:
-    name: APP_NAME_network
-COMPOSE
+    name: paperless-ai-network
+EOF
+    fi
 
     log_info "docker-compose.yml created successfully."
+}
+
+create_caddyfile() {
+    if [[ "$USE_CADDY" != "true" ]]; then
+        return
+    fi
+
+    log_step "Creating Caddyfile..."
+
+    cat > Caddyfile << EOF
+# ============================================================================
+# Caddy Configuration for Paperless-AI
+# Generated by WZ-IT Installer v${SCRIPT_VERSION}
+# https://wz-it.com
+#
+# Caddy automatically obtains and renews SSL certificates from Let's Encrypt.
+# Make sure port 80 and 443 are open and your DNS points to this server.
+# ============================================================================
+
+${DOMAIN} {
+    # Reverse proxy to Paperless-AI container
+    reverse_proxy paperless-ai:3000
+
+    # Enable compression for better performance
+    encode gzip zstd
+
+    # Security headers
+    header {
+        # Enable HSTS (HTTP Strict Transport Security)
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # Prevent clickjacking attacks
+        X-Frame-Options "SAMEORIGIN"
+        # Prevent MIME type sniffing
+        X-Content-Type-Options "nosniff"
+        # XSS Protection
+        X-XSS-Protection "1; mode=block"
+        # Referrer Policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Remove server identification
+        -Server
+    }
+
+    # Access logging
+    log {
+        output file /data/logs/access.log {
+            roll_size 10mb
+            roll_keep 5
+            roll_keep_for 168h
+        }
+    }
+}
+
+# Optional: Redirect www to non-www (uncomment if needed)
+# www.${DOMAIN} {
+#     redir https://${DOMAIN}{uri} permanent
+# }
+EOF
+
+    log_info "Caddyfile created successfully."
 }
 
 create_env_file() {
     log_step "Creating .env file..."
 
-    cat > .env << ENV
+    cat > .env << 'ENV'
 # ============================================================================
-# APP_NAME Environment Configuration
+# Paperless-AI Environment Configuration
 # Generated by WZ-IT Installer
+# https://wz-it.com
+#
+# Documentation: https://github.com/clusterzx/paperless-ai
 # ============================================================================
 
-APP_VERSION=${APP_VERSION}
+# Timezone
 TZ=Europe/Berlin
 
-# Add your environment variables here
-# Example:
-# DATABASE_PASSWORD=changeme
-# ADMIN_USER=admin
+# ─────────────────────────────────────────────────────────────────────────────
+# Paperless-AI Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Configure these settings in the web interface at localhost:3000
+# after starting the container for the first time.
 ENV
 
     log_info ".env file created successfully."
 }
 
 start_services() {
-    log_step "Starting ${APP_NAME}..."
+    log_step "Starting Paperless-AI..."
 
     ${COMPOSE_CMD} up -d
 
-    log_info "${APP_NAME} is starting..."
-    sleep 3
+    log_info "Waiting for services to start..."
+    sleep 5
 
-    # Verify container is running
-    if docker ps | grep -q "APP_NAME"; then
-        log_info "${APP_NAME} container is running."
+    # Check if containers are running
+    if docker ps | grep -q "paperless-ai"; then
+        log_info "Paperless-AI container is running."
     else
-        log_warn "Container may still be starting. Check logs with: ${COMPOSE_CMD} logs -f"
+        log_warn "Paperless-AI container may still be starting."
+        log_warn "Check logs with: ${COMPOSE_CMD} logs -f paperless-ai"
+    fi
+
+    if [[ "$USE_CADDY" == "true" ]]; then
+        if docker ps | grep -q "paperless-ai-caddy"; then
+            log_info "Caddy container is running."
+        else
+            log_warn "Caddy container may not be running."
+            log_warn "Check logs with: ${COMPOSE_CMD} logs -f caddy"
+        fi
     fi
 }
 
@@ -425,17 +636,37 @@ print_success() {
     echo -e "${GREEN}Installation Complete!${NC}"
     echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    echo "APP_NAME has been installed successfully!"
+    echo "Paperless-AI has been installed successfully!"
     echo ""
     echo -e "Installation directory: ${BOLD}${INSTALL_DIR}${NC}"
-    echo -e "Access URL:             ${BOLD}http://localhost:8080${NC}"
+
+    if [[ "$USE_CADDY" == "true" ]]; then
+        echo -e "Access URL:             ${BOLD}https://${DOMAIN}${NC}"
+        echo ""
+        echo -e "${YELLOW}Important:${NC}"
+        echo "  - Ensure your DNS A record points to this server's IP address"
+        echo "  - Caddy will automatically obtain SSL certificates from Let's Encrypt"
+        echo "  - Certificates are stored in the caddy-data volume"
+    else
+        echo -e "Access URL:             ${BOLD}http://localhost:3000${NC}"
+    fi
+
+    echo ""
+    echo -e "${CYAN}Next Steps:${NC}"
+    echo "  1. Open the web interface"
+    echo "  2. Configure your Paperless-ngx connection"
+    echo "  3. Set up your AI provider (OpenAI, Ollama, etc.)"
     echo ""
     echo "Useful commands:"
     echo "  cd ${INSTALL_DIR}"
-    echo "  ${COMPOSE_CMD} logs -f         # View logs"
-    echo "  ${COMPOSE_CMD} down            # Stop services"
-    echo "  ${COMPOSE_CMD} up -d           # Start services"
-    echo "  ${COMPOSE_CMD} pull && ${COMPOSE_CMD} up -d  # Update"
+    echo "  ${COMPOSE_CMD} logs -f              # View all logs"
+    echo "  ${COMPOSE_CMD} logs -f paperless-ai # View Paperless-AI logs"
+    if [[ "$USE_CADDY" == "true" ]]; then
+        echo "  ${COMPOSE_CMD} logs -f caddy        # View Caddy logs"
+    fi
+    echo "  ${COMPOSE_CMD} down                 # Stop services"
+    echo "  ${COMPOSE_CMD} up -d                # Start services"
+    echo "  ${COMPOSE_CMD} pull && ${COMPOSE_CMD} up -d  # Update to latest"
     echo ""
     echo -e "${ORANGE}Thank you for using WZ-IT scripts!${NC}"
     echo -e "Visit us at: ${BOLD}https://wz-it.com${NC}"
@@ -451,9 +682,13 @@ main() {
     print_disclaimer
     confirm_proceed
     echo ""
+    configure_installation
+    confirm_proceed
+    echo ""
     preflight_checks
     create_install_directory
     create_docker_compose
+    create_caddyfile
     create_env_file
     start_services
     print_success
